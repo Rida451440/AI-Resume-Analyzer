@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% set active_page = 'results' %}
+{% block title %}Analysis Results{% endblock %}
+
+{% block content %}
+<header class="topbar">
+    <div>
+        <p class="breadcrumb">Workspace <span>/</span> Analysis Results</p>
+        <h1>Analysis Results</h1>
+        <p class="file-chip">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+            {{ file_name }}
+        </p>
+    </div>
+    <a href="{{ url_for('home') }}" class="ghost-button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+        Analyze another resume
+    </a>
+</header>
+
+<section class="score-grid results-scores">
+    <div class="score-card">
+        <div class="score-ring" style="--score: {{ result.match_score }}%;">
+            <div class="score-inner"><strong>{{ result.match_score }}%</strong></div>
+        </div>
+        <div class="score-description">
+            <span class="badge">{{ result.match_label }}</span>
+            <h3>Resume Match Score</h3>
+            <p>Text similarity between your resume and the job description.</p>
+            <small>This is not a hiring probability.</small>
+        </div>
+    </div>
+
+    <div class="score-card">
+        <div class="score-ring" style="--score: {{ result.ats_score }}%;">
+            <div class="score-inner"><strong>{{ result.ats_score }}%</strong></div>
+        </div>
+        <div class="score-description">
+            <span class="badge">Checklist</span>
+            <h3>ATS Checklist Score</h3>
+            <p>Based on the presence of six common resume sections.</p>
+            <small>Not an official employer ATS score.</small>
+        </div>
+    </div>
+</section>
+
+<section class="stats-grid results-stats">
+    <div class="stat-card">
+        <span>Matched skills</span>
+        <strong>{{ result.matched_skills|length }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>Missing skills</span>
+        <strong>{{ result.missing_skills|length }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>Resume skills</span>
+        <strong>{{ result.resume_skills|length }}</strong>
+    </div>
+</section>
+
+<section class="results-columns">
+    <div class="panel" id="ats">
+        <div class="section-heading">
+            <span class="step-number">ATS</span>
+            <div>
+                <h2>ATS Resume Checker</h2>
+                <p>Checks whether common sections and contact details appear in your resume text.</p>
+            </div>
+        </div>
+
+        <div class="ats-check-list">
+            {% for section in result.ats_sections %}
+                <div class="ats-check-item">
+                    <span>{{ section.name }}</span>
+                    {% if section.present %}
+                        <strong class="ats-present">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+                            Present
+                        </strong>
+                    {% else %}
+                        <strong class="ats-missing">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                            Missing
+                        </strong>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <h3 class="sub-heading">ATS Improvement Tips</h3>
+        <ul class="recommendation-list">
+            {% for tip in result.ats_recommendations %}
+                <li>{{ tip }}</li>
+            {% else %}
+                <li>All checklist sections were detected. Review the content for accuracy.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="panel">
+        <div class="section-heading">
+            <span class="step-number">SK</span>
+            <div>
+                <h2>Skills Analysis</h2>
+                <p>Skills from the job description compared with your resume.</p>
+            </div>
+        </div>
+
+        <h3 class="sub-heading">Matched Skills</h3>
+        <div class="skill-list">
+            {% for skill in result.matched_skills %}
+                <span class="skill matched">{{ skill }}</span>
+            {% else %}
+                <p class="muted-text">No matching supported skills found.</p>
+            {% endfor %}
+        </div>
+
+        <h3 class="sub-heading spaced">Missing Skills</h3>
+        <div class="skill-list">
+            {% for skill in result.missing_skills %}
+                <span class="skill missing">{{ skill }}</span>
+            {% else %}
+                <p class="muted-text">No missing supported skills found.</p>
+            {% endfor %}
+        </div>
+
+        <h3 class="sub-heading spaced">Skills Found in Resume</h3>
+        <div class="skill-list">
+            {% for skill in result.resume_skills %}
+                <span class="skill">{{ skill }}</span>
+            {% else %}
+                <p class="muted-text">No supported skills identified.</p>
+            {% endfor %}
+        </div>
+
+        <h3 class="sub-heading spaced">Resume Improvement Suggestions</h3>
+        <ul class="recommendation-list">
+            {% for recommendation in result.recommendations %}
+                <li>{{ recommendation }}</li>
+            {% else %}
+                <li>No suggestions right now based on the supported skills list.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+
+<section class="panel report-panel">
+    <div>
+        <h3>Download your report</h3>
+        <p>Save this analysis as a PDF to keep or share.</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('download_report') }}" class="download-report-form">
+        <input type="hidden" name="match_score" value="{{ result.match_score }}">
+        <input type="hidden" name="ats_score" value="{{ result.ats_score }}">
+
+        {% for skill in result.resume_skills %}
+            <input type="hidden" name="resume_skills" value="{{ skill }}">
+        {% endfor %}
+        {% for skill in result.job_skills %}
+            <input type="hidden" name="job_skills" value="{{ skill }}">
+        {% endfor %}
+        {% for skill in result.matched_skills %}
+            <input type="hidden" name="matched_skills" value="{{ skill }}">
+        {% endfor %}
+        {% for skill in result.missing_skills %}
+            <input type="hidden" name="missing_skills" value="{{ skill }}">
+        {% endfor %}
+        {% for recommendation in result.recommendations %}
+            <input type="hidden" name="recommendations" value="{{ recommendation }}">
+        {% endfor %}
+        {% for section in result.ats_sections %}
+            <input type="hidden" name="ats_checks"
+                   value="{{ section.name }}: {% if section.present %}Present{% else %}Missing{% endif %}">
+        {% endfor %}
+        {% for tip in result.ats_recommendations %}
+            <input type="hidden" name="ats_recommendations" value="{{ tip }}">
+        {% endfor %}
+
+        <button type="submit" class="primary-button">
+            <span class="button-label">Download PDF Report</span>
+            <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M6 11l6 6 6-6M5 20h14"/></svg>
+        </button>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% set active_page = 'upload' %}
+{% block title %}Upload Resume{% endblock %}
+
+{% block content %}
+<header class="topbar">
+    <div>
+        <p class="breadcrumb">Workspace <span>/</span> Upload Resume</p>
+        <h1>Resume Analysis</h1>
+    </div>
+    <span class="status"><span class="status-dot"></span> System ready</span>
+</header>
+
+<section class="intro">
+    <div class="intro-text">
+        <p class="eyebrow">Career tool</p>
+        <h2>Check how well your resume fits the job.</h2>
+        <p>Upload your resume, paste the job description, and get a text-match score, skill gap analysis and an ATS section checklist.</p>
+    </div>
+    <ul class="intro-points">
+        <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+            PDF and Word (.docx) supported
+        </li>
+        <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+            TF-IDF text similarity
+        </li>
+        <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+            Downloadable PDF report
+        </li>
+    </ul>
+</section>
+
+{% if error %}
+    <div class="error-message upload-wrap" role="alert">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <span>{{ error }}</span>
+    </div>
+{% endif %}
+
+<section class="panel upload-wrap" id="analyze">
+    <div class="section-heading">
+        <span class="step-number">01</span>
+        <div>
+            <h2>Upload Resume</h2>
+            <p>Upload a PDF or Word document and paste the job description.</p>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('analyze') }}" enctype="multipart/form-data" id="analyze-form">
+        <label class="upload-area" for="resume" id="drop-zone">
+            <span class="upload-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg>
+            </span>
+            <strong id="file-title">Drop your resume here or click to browse</strong>
+            <small id="file-name">Supported formats: PDF, DOCX &middot; Max 5 MB</small>
+        </label>
+
+        <input type="file" id="resume" name="resume"
+               accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+               required>
+
+        <p class="file-error" id="file-error" role="alert" hidden></p>
+
+        <label class="field-label" for="job">Job Description</label>
+        <textarea id="job" name="job_description"
+                  placeholder="Paste the job responsibilities and required skills here..."
+                  required>{{ job_description or '' }}</textarea>
+
+        <button type="submit" class="primary-button" id="submit-button">
+            <span class="button-label">Analyze Resume</span>
+            <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <span class="button-spinner" aria-hidden="true"></span>
+        </button>
+    </form>
+</section>
+
+<section class="features" id="features">
+    <div class="feature-card">
+        <span>01 / Matching</span>
+        <h3>Text Similarity</h3>
+        <p>Compare resume content with job requirements using TF-IDF.</p>
+    </div>
+    <div class="feature-card">
+        <span>02 / Skills</span>
+        <h3>Skills Analysis</h3>
+        <p>Identify supported matched and missing skills.</p>
+    </div>
+    <div class="feature-card">
+        <span>03 / ATS</span>
+        <h3>Resume Checklist</h3>
+        <p>Check for common resume sections and get improvement tips.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const form = document.getElementById("analyze-form");
+    const resumeInput = document.getElementById("resume");
+    const dropZone = document.getElementById("drop-zone");
+    const fileName = document.getElementById("file-name");
+    const fileTitle = document.getElementById("file-title");
+    const fileError = document.getElementById("file-error");
+    const submitButton = document.getElementById("submit-button");
+
+    const DEFAULT_TITLE = "Drop your resume here or click to browse";
+    const DEFAULT_HINT = "Supported formats: PDF, DOCX \u00b7 Max 5 MB";
+    const MAX_SIZE = 5 * 1024 * 1024;
+
+    function showFileError(message) {
+        fileError.textContent = message;
+        fileError.hidden = false;
+    }
+
+    function resetFile() {
+        resumeInput.value = "";
+        fileTitle.textContent = DEFAULT_TITLE;
+        fileName.textContent = DEFAULT_HINT;
+        dropZone.classList.remove("has-file");
+    }
+
+    function handleFile(file) {
+        fileError.hidden = true;
+
+        if (!file) {
+            resetFile();
+            return;
+        }
+
+        const lower = file.name.toLowerCase();
+
+        if (lower.endsWith(".doc")) {
+            resetFile();
+            showFileError("Old .doc files are not supported. Please save as .docx or PDF.");
+            return;
+        }
+
+        if (!lower.endsWith(".pdf") && !lower.endsWith(".docx")) {
+            resetFile();
+            showFileError("Please choose a PDF or Word (.docx) file.");
+            return;
+        }
+
+        if (file.size > MAX_SIZE) {
+            resetFile();
+            showFileError("File is larger than 5 MB.");
+            return;
+        }
+
+        fileTitle.textContent = "Resume selected";
+        fileName.textContent = file.name;
+        dropZone.classList.add("has-file");
+    }
+
+    resumeInput.addEventListener("change", function () {
+        handleFile(this.files[0]);
+    });
+
+    ["dragenter", "dragover"].forEach(function (eventName) {
+        dropZone.addEventListener(eventName, function (event) {
+            event.preventDefault();
+            dropZone.classList.add("dragging");
+        });
+    });
+
+    ["dragleave", "drop"].forEach(function (eventName) {
+        dropZone.addEventListener(eventName, function (event) {
+            event.preventDefault();
+            dropZone.classList.remove("dragging");
+        });
+    });
+
+    dropZone.addEventListener("drop", function (event) {
+        const files = event.dataTransfer.files;
+
+        if (files.length > 0) {
+            resumeInput.files = files;
+            handleFile(files[0]);
+        }
+    });
+
+    form.addEventListener("submit", function () {
+        submitButton.classList.add("loading");
+        submitButton.disabled = true;
+        submitButton.querySelector(".button-label").textContent = "Analyzing...";
+    });
+
+    window.addEventListener("pageshow", function () {
+        submitButton.classList.remove("loading");
+        submitButton.disabled = false;
+        submitButton.querySelector(".button-label").textContent = "Analyze Resume";
+    });
+</script>
+{% endblock %}
